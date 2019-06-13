@@ -3,11 +3,6 @@ os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 
 import deeprad_keras_tools
 
-from PIL import Image
-from time import time
-
-from matplotlib import pyplot as plt
-
 import tensorflow
 from tensorflow.keras.callbacks import History, ModelCheckpoint, TensorBoard
 from tensorflow.keras.optimizers import Adam
