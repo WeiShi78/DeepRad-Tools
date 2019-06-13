@@ -2,7 +2,13 @@
 
 Commandline tools to facilitate the use of Medical Images (from NifTI files) to standard image files (TIFF files) so that these datasets can be readily consumed by deep learning frameworks as used for computer vision.
 
-It currently consists of two tools: [deeprad_nii2img](#deeprad_nii2img) and [deeprad_normalize](#deeprad_normalize)
+It currently consists of three tools: [deeprad_keras_tools](#deeprad_keras_tools), [deeprad_nii2img](#deeprad_nii2img), and [deeprad_normalize](#deeprad_normalize)
+
+# deeprad_keras_tools
+
+This is a set of helper functions for Keras that facilitates the use of DeepRad-prepared
+TIFF images into Keras models. This includes functions to wrap model input and output and
+other useful tools. See Examples for how these tools can be used.
 
 # deeprad_nii2img
 
