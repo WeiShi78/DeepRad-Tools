@@ -40,6 +40,7 @@ this tool to calculate the proper scale factors for input and output data.
 Input is expected as a list of one or more folders for input (--X) and target
 output ground truth (--Y) data. Output is written into the specified folder (--outfolder)
 in the following format if validation or testing fractions are specified:
+```
     -OUTFOLDER
         -X
             -test
@@ -49,20 +50,21 @@ in the following format if validation or testing fractions are specified:
             -test
             -train
             -val
-
+```
 Or if validiation or tesing fractions are not specified:
+```
     -OUTFOLDER
         -X
         -Y
+```
 
 This folder structure will facilitate integration into a variety of deep learning frameworks
 
 Current limitations of 06/2019:
-    * only handles 2D slices, 3D patches coming soon
-    * is optimized to image-to-image translations, segmentation needs to be validated.
-        Classification and regression capability (mapped to a CSV file) are forthcoming
-    * augmentation strategies are currently limited to affine transformations
-    * 4D NifTI data is not properly handled and will likely break things
+ - only handles 2D slices, 3D patches coming soon
+ - is optimized to image-to-image translations, segmentation needs to be validated. Classification and regression capability (mapped to a CSV file) are forthcoming
+ - augmentation strategies are currently limited to affine transformations
+ - 4D NifTI data is not properly handled and will likely break things
 
 Try running deeprad_nii2img --help for specific help and command line options
 
