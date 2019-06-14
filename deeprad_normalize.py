@@ -59,8 +59,11 @@ def glob_nii(folder):
 
 def main():
     args = arg_parser().parse_args()
+    process(args)
 
+def process(args):
     indata = list( itertools.chain.from_iterable( [ glob_nii(f) for f in args.folder ] ) )
+    print(args.folder)
 
     print('deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
     print('{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
@@ -138,10 +141,27 @@ def main():
         elif args.customnorm: # custom normalization
             curr_normstring = '@DeepRad/cshift/{}/cscale/{}'.format(args.shift,args.scale)
 
+        # extract directory and file names from path
+        old_path = curr_nii.get_filename()
+        curr_nii_path = os.path.dirname(old_path)
+        curr_nii_name = os.path.basename(old_path)
+        temp_path = os.path.join(curr_nii_path, "temp_"+curr_nii_name)
+
         # update nifti header and save
         curr_ext = nibabel.nifti1.Nifti1Extension('afni',str.encode(curr_normstring))
         curr_nii.header.extensions.append(curr_ext)
-        curr_nii.to_filename( curr_nii.get_filename() )
+        curr_nii.to_filename( temp_path )
+
+        # move original files to "orignal" folder
+        original_folder = os.path.join(curr_nii_path, 'original')
+        print(original_folder)
+        if not os.path.exists(original_folder):
+            os.mkdir(original_folder)
+
+        new_path = os.path.join(original_folder, curr_nii_name)
+        os.rename(old_path, new_path)
+        os.rename(temp_path, old_path)
+
 
 
 if __name__ == "__main__":
