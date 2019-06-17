@@ -16,15 +16,24 @@ effect on the use of the modified NifTI images in any other tool.
 # This file is part of DeepRad and is released under the "MIT License Agreement".
 # Please see the LICENSE file that should have been included as part of this package
 
-import argparse
 from PIL import Image
-import itertools
-import nibabel
-import os
-import sys
 from glob import glob
 from tqdm import tqdm
+
+import os
+import sys
+import shutil
+import logging
+import nibabel
+import argparse
+import itertools
+
 import numpy as np
+
+class GuiLogger(logging.Handler):
+    def emit(self, record):
+        text = self.edit.toPlainText()+'\n'+self.format(record)
+        self.edit.setPlainText(text)  # implementation of append_line omitted
 
 def arg_parser():
     """
@@ -62,22 +71,45 @@ def main():
     process(args)
 
 def process(args):
-    indata = list( itertools.chain.from_iterable( [ glob_nii(f) for f in args.folder ] ) )
-    print(args.folder)
 
-    print('deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
-    print('{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
+    logger = logging.getLogger()
+    # set up logging    
+    logger.setLevel(logging.DEBUG)     
+    # create console handler and set level to info
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    # create error file handler and set level to info
+    logfile = os.path.join(args.folder[0],'deeprad.log')
+    handler = logging.FileHandler(logfile,'w', encoding=None, delay='true')
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    # output log to QT GUI
+    h = GuiLogger()
+    h.edit = args.log_output  # this should be done in __init__ 
+    logger.addHandler(h)
+
+    indata = list( itertools.chain.from_iterable( [ glob_nii(f) for f in args.folder ] ) )
+    logger.info(args.folder)
+
+    logger.info('deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
+    logger.info('{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
 
     # for global normalization we need to keep track data ranges
     globaldata_norm1 = np.zeros(len(indata))
     globaldata_norm2 = np.zeros(len(indata))
 
     if args.customnorm:
-        print('Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
+        logger.info('Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
     elif args.volumenorm:
-        print('Computing volume-wise normalization...')
+        logger.info('Computing volume-wise normalization...')
     elif args.globalnorm or args.globalzscore:
-        print('Computing global normalization...')
+        logger.info('Computing global normalization...')
         # loop through all of the files
         #for curr_file in indata:
         for i in tqdm(range(len(indata)),desc='Determining global scaling factors'):
@@ -95,13 +127,13 @@ def process(args):
         if args.globalnorm:
             global_min = np.min(globaldata_norm1)
             global_max = np.max(globaldata_norm2)
-            print(' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
-            print(' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
+            logger.info(' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
+            logger.info(' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
         elif args.globalzscore:
             global_mean = np.mean(globaldata_norm1)
             global_std = np.std(globaldata_norm2)
-            print(' Global mean= {}'.format(global_mean))
-            print(' Global std= {}'.format(global_std))
+            logger.info(' Global mean= {}'.format(global_mean))
+            logger.info(' Global std= {}'.format(global_std))
 
     # loop through all of the files
     for i in tqdm(range(len(indata)),desc='Writing normalization to header'):
@@ -154,13 +186,17 @@ def process(args):
 
         # move original files to "orignal" folder
         original_folder = os.path.join(curr_nii_path, 'original')
-        print(original_folder)
         if not os.path.exists(original_folder):
             os.mkdir(original_folder)
 
         new_path = os.path.join(original_folder, curr_nii_name)
         os.rename(old_path, new_path)
         os.rename(temp_path, old_path)
+
+        # delete 
+        # shutil.rmtree('/path/to/your/dir/')
+
+    logger.info("Normalization completed!")
 
 
 

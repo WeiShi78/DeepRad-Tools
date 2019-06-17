@@ -388,5 +388,5 @@ class Ui_Dialog(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("Dialog", "nii2img"))
 
     def connect_to_backend(self):
-        backend(self)
+        deeprad_backend(self)
 
