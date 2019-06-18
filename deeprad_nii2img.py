@@ -81,6 +81,11 @@ from tqdm import tqdm
 # global variables
 logger = logging.getLogger()
 
+class GuiLogger(logging.Handler):
+    def emit(self, record):
+        text = self.edit.toPlainText()+'\n'+self.format(record)
+        self.edit.setPlainText(text)  # implementation of append_line omitted
+
 def arg_parser():
     """
     Function to return the command line argument parse for deeprad_nii2img
@@ -133,6 +138,11 @@ def glob_nii(folder):
 def main():
     # parse args
     args = arg_parser().parse_args()
+    process_n2i(args)
+
+def process_n2i(args):
+
+    logger = logging.getLogger()
 
     # fix random seet for reproducibility
     np.random.seed(args.augseed)
@@ -156,11 +166,17 @@ def main():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-    logger.info('Started {}'.format(sys.argv[0]))
+    # output log to QT GUI
+    h = GuiLogger()
+    h.edit = args.log_output  # this should be done in __init__
+    logger.addHandler(h)
+    tabs = '---'
+
+    logger.info(tabs+'Started {}'.format(sys.argv[0]))
 
     # for clarity, repeat the command line options
     cmd_line_options = ' '.join(sys.argv[1:])
-    logger.info('Command line options were: {}'.format(cmd_line_options))
+    logger.info(tabs+'Command line options were: {}'.format(cmd_line_options))
 
     # get file names and check that we have a similar count
     X_files = [glob_nii(f) for f in args.X]
@@ -177,7 +193,7 @@ def main():
             logger.error(err_msg)
             raise ValueError(err_msg)
 
-    logger.info('{} inputs (X) will be matched to {} outputs (Y) across {} observations (subjects)'.format(len(X_files),len(Y_files),num_files))
+    logger.info(tabs+'{} inputs (X) will be matched to {} outputs (Y) across {} observations (subjects)'.format(len(X_files),len(Y_files),num_files))
 
     do_testdata = True if (args.testfraction>0) else False
     do_valdata = True if (args.valfraction>0) else False
@@ -185,7 +201,7 @@ def main():
     num_test = int( num_files*args.testfraction/100 )
     num_val = int( num_files*args.valfraction/100 )
     num_train = num_files - num_val - num_test
-    logger.info('{} observations will be used for training, {} for validation, and {} for testing'.format(num_train,num_val,num_test))
+    logger.info(tabs+'{} observations will be used for training, {} for validation, and {} for testing'.format(num_train,num_val,num_test))
 
     # check output folders
     X_folder = os.path.join(args.outfolder,'X')
@@ -200,7 +216,7 @@ def main():
             logger.error(err_msg)            
             raise ValueError(err_msg)
     else:
-        logger.info('CAUTION: The option --force was specified. Existing images WILL NOT be overwritten, but performance will be degraded')
+        logger.info(tabs+'CAUTION: The option --force was specified. Existing images WILL NOT be overwritten, but performance will be degraded')
 
     os.makedirs(X_folder,exist_ok=True)
     if do_testdata or do_valdata:
@@ -218,7 +234,7 @@ def main():
         if do_valdata:
             os.makedirs(os.path.join(Y_folder,'val'),exist_ok=True)
 
-    logger.info('Generating {}x samples per observation with augmentation'.format(args.augfactor))
+    logger.info(tabs+'Generating {}x samples per observation with augmentation'.format(args.augfactor))
     
     # shuffle input data if requested
     file_order = np.random.permutation(num_files) if args.shuffle else range(num_files)
@@ -227,13 +243,13 @@ def main():
     force_count = 0 # for --force option, keep track of existing files that were skipped to speed up
     subject_count = 0 # count for file writing
     for i in range(num_files):
-        for axis in args.axes:
+        for axis in range(args.axes):
 
             # read in data
             curr_X_files = [f[file_order[i]] for f in X_files]
             curr_Y_files = [f[file_order[i]] for f in Y_files]
-            X_vol = np.stack([get_nii_data(f) for f in curr_X_files])
-            Y_vol = np.stack([get_nii_data(f) for f in curr_Y_files])
+            X_vol = np.stack([get_nii_data(f, logger) for f in curr_X_files])
+            Y_vol = np.stack([get_nii_data(f, logger) for f in curr_Y_files])
 
             # transpose so that the sampled slice is the last dimension
             if axis == 0:
@@ -251,7 +267,7 @@ def main():
                     output_shape = X_vol.shape[1:3]
                 check_first_file = False
              
-            logger.info('X[{}] => Y[{}]'.format(' '.join(curr_X_files),' '.join(curr_Y_files)))
+            logger.info(tabs+'X[{}] => Y[{}]'.format(' '.join(curr_X_files),' '.join(curr_Y_files)))
 
             # check to make sure the data is matching in size, otherwise skip this data
             if X_vol.shape[1:4] != Y_vol.shape[1:4]:
@@ -396,7 +412,7 @@ def main():
                 Ximage.save(Ximage_path)
                 Yimage.save(Yimage_path)
 
-    logger.info('Completed!')
+    logger.info(tabs+'Completed!')
 
 
 def get_slice_chunks( img, z_loc, num_slices ):
@@ -420,7 +436,7 @@ def get_slice_chunks( img, z_loc, num_slices ):
     return out
 
 
-def get_nii_data(fn):
+def get_nii_data(fn, logger):
     """
     Function to load NifTI data from the passed filename and apply DeepRad normalization (from deeprad_normalize)
 

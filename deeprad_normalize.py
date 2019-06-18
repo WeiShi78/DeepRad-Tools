@@ -68,9 +68,9 @@ def glob_nii(folder):
 
 def main():
     args = arg_parser().parse_args()
-    process(args)
+    process_norm(args)
 
-def process(args):
+def process_norm(args):
 
     logger = logging.getLogger()
     # set up logging    
@@ -91,25 +91,26 @@ def process(args):
 
     # output log to QT GUI
     h = GuiLogger()
-    h.edit = args.log_output  # this should be done in __init__ 
+    h.edit = args.log_output  # this should be done in __init__
     logger.addHandler(h)
 
+    tabs = '---'
     indata = list( itertools.chain.from_iterable( [ glob_nii(f) for f in args.folder ] ) )
-    logger.info(args.folder)
+    # logger.info(args.folder)
 
-    logger.info('deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
-    logger.info('{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
+    logger.info(tabs+'deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
+    logger.info(tabs+'{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
 
     # for global normalization we need to keep track data ranges
     globaldata_norm1 = np.zeros(len(indata))
     globaldata_norm2 = np.zeros(len(indata))
 
     if args.customnorm:
-        logger.info('Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
+        logger.info(tabs+'Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
     elif args.volumenorm:
-        logger.info('Computing volume-wise normalization...')
+        logger.info(tabs+'Computing volume-wise normalization...')
     elif args.globalnorm or args.globalzscore:
-        logger.info('Computing global normalization...')
+        logger.info(tabs+'Computing global normalization...')
         # loop through all of the files
         #for curr_file in indata:
         for i in tqdm(range(len(indata)),desc='Determining global scaling factors'):
@@ -127,13 +128,13 @@ def process(args):
         if args.globalnorm:
             global_min = np.min(globaldata_norm1)
             global_max = np.max(globaldata_norm2)
-            logger.info(' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
-            logger.info(' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
+            logger.info(tabs+' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
+            logger.info(tabs+' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
         elif args.globalzscore:
             global_mean = np.mean(globaldata_norm1)
             global_std = np.std(globaldata_norm2)
-            logger.info(' Global mean= {}'.format(global_mean))
-            logger.info(' Global std= {}'.format(global_std))
+            logger.info(tabs+' Global mean= {}'.format(global_mean))
+            logger.info(tabs+' Global std= {}'.format(global_std))
 
     # loop through all of the files
     for i in tqdm(range(len(indata)),desc='Writing normalization to header'):
@@ -196,7 +197,7 @@ def process(args):
         # delete 
         # shutil.rmtree('/path/to/your/dir/')
 
-    logger.info("Normalization completed!")
+    logger.info(tabs+"Normalization completed!")
 
 
 

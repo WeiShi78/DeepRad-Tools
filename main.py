@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from JUN15 import *
+from JUN15_v3 import *
 
 if __name__ == '__main__':
    """
