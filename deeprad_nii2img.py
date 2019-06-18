@@ -243,7 +243,7 @@ def process_n2i(args):
     force_count = 0 # for --force option, keep track of existing files that were skipped to speed up
     subject_count = 0 # count for file writing
     for i in range(num_files):
-        for axis in range(args.axes):
+        for axis in args.axes:
 
             # read in data
             curr_X_files = [f[file_order[i]] for f in X_files]
@@ -381,6 +381,10 @@ def process_n2i(args):
                 X = np.reshape( X, (X.shape[0],-1), order='F' )
                 Y = np.reshape( Y, (X.shape[0],-1), order='F' )
 
+                # transform the images to 32-bit float
+                X = np.array(X, dtype=np.float32)
+                Y = np.array(Y, dtype=np.float32)                
+
                 # create PIL images and write to disk
                 Ximage = Image.fromarray(X,mode='F')
                 Yimage = Image.fromarray(Y,mode='F')
@@ -412,7 +416,7 @@ def process_n2i(args):
                 Ximage.save(Ximage_path)
                 Yimage.save(Yimage_path)
 
-    logger.info(tabs+'Completed!')
+    logger.info(tabs+'Completed!\n\n\n')
 
 
 def get_slice_chunks( img, z_loc, num_slices ):

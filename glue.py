@@ -27,7 +27,6 @@ def deeprad_backend_norm(ui):
         value_cropa = 0
         value_cropb = 0
 
-
     args = SimpleNamespace(folder=value_folder,
                            volumenorm=value_vn,
                            globalnorm=value_gn,
@@ -50,7 +49,7 @@ def deeprad_backend_n2i(ui):
     value_Y = [ui.n2i_folder_Y.toPlainText()]
 
     try:
-        value_axes = int(ui.n2i_text_axes.text())
+        value_axes = [int(ui.n2i_text_axes.text())]
     except ValueError:
         value_axes = None
 
@@ -88,9 +87,9 @@ def deeprad_backend_n2i(ui):
     value_shuffle = ui.n2i_check_shuffle.isChecked()
     
     if value_imsize_w is None and value_imsize_h is None:
-    	value_imsize = None
+      value_imsize = None
     else:
-    	value_imsize = [value_imsize_w, value_imsize_h]
+      value_imsize = [value_imsize_w, value_imsize_h]
 
     # augmentation part
     if ui.n2i_check_aug.isChecked():
