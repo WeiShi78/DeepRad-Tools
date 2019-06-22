@@ -19,14 +19,18 @@ effect on the use of the modified NifTI images in any other tool.
 from PIL import Image
 from glob import glob
 from tqdm import tqdm
+# from dynamic_tqdm import setup_logging, setup_streams_redirection
 
 import os
 import sys
+import time
 import shutil
 import logging
 import nibabel
 import argparse
 import itertools
+import dynamic_tqdm
+import tqdm.auto as t_AUTO
 
 import numpy as np
 
@@ -71,46 +75,51 @@ def main():
     process_norm(args)
 
 def process_norm(args):
+    #
+    # logger = logging.getLogger()
+    # # set up logging
+    # logger.setLevel(logging.DEBUG)
+    # # create console handler and set level to info
+    # handler = logging.StreamHandler()
+    # handler.setLevel(logging.INFO)
+    # formatter = logging.Formatter('%(message)s')
+    # handler.setFormatter(formatter)
+    # logger.addHandler(handler)
+    # # create error file handler and set level to info
+    # logfile = os.path.join(args.folder[0],'deeprad.log')
+    # handler = logging.FileHandler(logfile,'w', encoding=None, delay='true')
+    # handler.setLevel(logging.INFO)
+    # formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+    # handler.setFormatter(formatter)
+    # logger.addHandler(handler)
 
-    logger = logging.getLogger()
-    # set up logging    
-    logger.setLevel(logging.DEBUG)     
-    # create console handler and set level to info
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    # create error file handler and set level to info
-    logfile = os.path.join(args.folder[0],'deeprad.log')
-    handler = logging.FileHandler(logfile,'w', encoding=None, delay='true')
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    # # output log to QT GUI
+    # h = GuiLogger()
+    # h.edit = args.log_output  # this should be done in __init__
+    # logger.addHandler(h)
 
-    # output log to QT GUI
-    h = GuiLogger()
-    h.edit = args.log_output  # this should be done in __init__
-    logger.addHandler(h)
+    # dynamic tqdm setting
+    dynamic_tqdm.setup_logging('DR_norm')
+    _logger = logging.getLogger('DR_norm')
+    _logger.setLevel(logging.DEBUG)
 
-    tabs = '---'
+    tabs = ''
     indata = list( itertools.chain.from_iterable( [ glob_nii(f) for f in args.folder ] ) )
     # logger.info(args.folder)
 
-    logger.info(tabs+'deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
-    logger.info(tabs+'{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
+    _logger.info(tabs+'deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
+    _logger.info(tabs+'{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
 
     # for global normalization we need to keep track data ranges
     globaldata_norm1 = np.zeros(len(indata))
     globaldata_norm2 = np.zeros(len(indata))
 
     if args.customnorm:
-        logger.info(tabs+'Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
+        _logger.info(tabs+'Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
     elif args.volumenorm:
-        logger.info(tabs+'Computing volume-wise normalization...')
+        _logger.info(tabs+'Computing volume-wise normalization...')
     elif args.globalnorm or args.globalzscore:
-        logger.info(tabs+'Computing global normalization...')
+        _logger.info(tabs+'Computing global normalization...')
         # loop through all of the files
         #for curr_file in indata:
         for i in tqdm(range(len(indata)),desc='Determining global scaling factors'):
@@ -128,16 +137,19 @@ def process_norm(args):
         if args.globalnorm:
             global_min = np.min(globaldata_norm1)
             global_max = np.max(globaldata_norm2)
-            logger.info(tabs+' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
-            logger.info(tabs+' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
+            _logger.info(tabs+' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
+            _logger.info(tabs+' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
         elif args.globalzscore:
             global_mean = np.mean(globaldata_norm1)
             global_std = np.std(globaldata_norm2)
-            logger.info(tabs+' Global mean= {}'.format(global_mean))
-            logger.info(tabs+' Global std= {}'.format(global_std))
+            _logger.info(tabs+' Global mean= {}'.format(global_mean))
+            _logger.info(tabs+' Global std= {}'.format(global_std))
 
     # loop through all of the files
-    for i in tqdm(range(len(indata)),desc='Writing normalization to header'):
+    tqdm_obect = t_AUTO.tqdm(range(len(indata)), unit_scale=True, dynamic_ncols=True)
+    tqdm_obect.set_description("Writing normalization to header")
+    # for i in tqdm(range(len(indata)),desc='Writing normalization to header'):
+    for i in tqdm_obect:
         curr_file = indata[i]
         curr_nii = nibabel.load(curr_file)
 
@@ -147,7 +159,7 @@ def process_norm(args):
             # check for the previous normalization string and remove it
             if curr_headerstring.startswith('@DeepRad'):
                 curr_nii.header.extensions.remove(curr_headerext)
-        
+
         # prepare new header string
         if args.volumenorm: # volumewise normalization
             curr_data = curr_nii.get_fdata()
@@ -194,11 +206,22 @@ def process_norm(args):
         os.rename(old_path, new_path)
         os.rename(temp_path, old_path)
 
-        # delete 
+        _logger.info('Processing: {}'.format(i))
+        # delete
         # shutil.rmtree('/path/to/your/dir/')
 
-    logger.info(tabs+"Normalization completed!")
+    _logger.info(tabs+"Normalization completed!")
 
+    # dynamic_tqdm.setup_logging('long_procedure')
+    # __logger = logging.getLogger('long_procedure')
+    # __logger.setLevel(logging.DEBUG)
+    # DR_tqdm = gbl_get_value("DR_tqdm")
+    # # tqdm_obect = t_AUTO.tqdm(range(10), unit_scale=True, dynamic_ncols=True)
+    # tqdm_obect = DR_tqdm(range(10), unit_scale=True, dynamic_ncols=True)
+    # tqdm_obect.set_description("My progress bar description")
+    # for i in tqdm_obect:
+    #     time.sleep(.1)
+    #     __logger.info('foo {}'.format(i))
 
 
 if __name__ == "__main__":

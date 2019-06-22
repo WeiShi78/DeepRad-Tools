@@ -69,6 +69,7 @@ import numpy as np
 import os
 import sys
 import time
+import copy
 import warnings
 from glob import glob
 from PIL import Image
@@ -389,6 +390,10 @@ def process_n2i(args):
                 Ximage = Image.fromarray(X,mode='F')
                 Yimage = Image.fromarray(Y,mode='F')
 
+                # # save as a npy to see the result
+                # Ximage = copy.deepcopy(X)
+                # Yimage = copy.deepcopy(Y)
+
                 # determine full output image path
                 if not do_testdata and not do_valdata:
                     curr_X_folder = X_folder
@@ -415,6 +420,11 @@ def process_n2i(args):
                 # write image file to disk 
                 Ximage.save(Ximage_path)
                 Yimage.save(Yimage_path)
+
+                # # save as npy
+                # np.save(Ximage_path, Ximage)
+                # np.save(Yimage_path, Yimage)
+
 
     logger.info(tabs+'Completed!\n\n\n')
 

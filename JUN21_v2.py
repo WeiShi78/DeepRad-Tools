@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'JUN15.ui'
+# Form implementation generated from reading ui file 'JUN21.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QThread
+from dynamic_tqdm import *
+from global_dict.w_global import gbl_set_value
 from glue import *
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(1152, 864)
+        Dialog.resize(1259, 890)
         self.tabWidget = QtWidgets.QTabWidget(Dialog)
-        self.tabWidget.setGeometry(QtCore.QRect(10, 10, 1121, 841))
+        self.tabWidget.setGeometry(QtCore.QRect(10, 10, 1231, 871))
         self.tabWidget.setObjectName("tabWidget")
         self.tab = QtWidgets.QWidget()
         self.tab.setObjectName("tab")
         self.textBrowser = QtWidgets.QTextBrowser(self.tab)
-        self.textBrowser.setGeometry(QtCore.QRect(20, 20, 1081, 781))
+        self.textBrowser.setGeometry(QtCore.QRect(20, 20, 1191, 781))
         self.textBrowser.setObjectName("textBrowser")
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QtWidgets.QWidget()
@@ -272,12 +275,6 @@ class Ui_Dialog(object):
         font.setWeight(50)
         self.label_23.setFont(font)
         self.label_23.setObjectName("label_23")
-        self.norm_button_start = QtWidgets.QPushButton(self.tab_2)
-        self.norm_button_start.setGeometry(QtCore.QRect(690, 10, 80, 23))
-        self.norm_button_start.setObjectName("norm_button_start")
-        self.norm_logger = QtWidgets.QTextBrowser(self.tab_2)
-        self.norm_logger.setGeometry(QtCore.QRect(690, 40, 411, 651))
-        self.norm_logger.setObjectName("norm_logger")
         self.tabWidget.addTab(self.tab_2, "")
         self.tab_3 = QtWidgets.QWidget()
         self.tab_3.setObjectName("tab_3")
@@ -736,19 +733,14 @@ class Ui_Dialog(object):
         self.n2i_check_aug.setGeometry(QtCore.QRect(0, 0, 121, 21))
         self.n2i_check_aug.setChecked(True)
         self.n2i_check_aug.setObjectName("n2i_check_aug")
-        self.n2i_button_start = QtWidgets.QPushButton(self.tab_3)
-        self.n2i_button_start.setGeometry(QtCore.QRect(690, 10, 80, 23))
-        self.n2i_button_start.setObjectName("n2i_button_start")
-        self.n2i_logger = QtWidgets.QTextBrowser(self.tab_3)
-        self.n2i_logger.setGeometry(QtCore.QRect(690, 40, 411, 551))
-        self.n2i_logger.setObjectName("n2i_logger")
+
         self.frame_4 = QtWidgets.QFrame(self.tab_3)
-        self.frame_4.setGeometry(QtCore.QRect(690, 600, 411, 201))
+        self.frame_4.setGeometry(QtCore.QRect(690, 600, 521, 201))
         self.frame_4.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame_4.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame_4.setObjectName("frame_4")
         self.groupBox_3 = QtWidgets.QGroupBox(self.frame_4)
-        self.groupBox_3.setGeometry(QtCore.QRect(10, 10, 391, 181))
+        self.groupBox_3.setGeometry(QtCore.QRect(10, 10, 501, 181))
         font = QtGui.QFont()
         font.setBold(True)
         font.setWeight(75)
@@ -756,7 +748,7 @@ class Ui_Dialog(object):
         self.groupBox_3.setCheckable(False)
         self.groupBox_3.setObjectName("groupBox_3")
         self.n2i_folder_X = QtWidgets.QPlainTextEdit(self.groupBox_3)
-        self.n2i_folder_X.setGeometry(QtCore.QRect(10, 50, 371, 21))
+        self.n2i_folder_X.setGeometry(QtCore.QRect(10, 50, 481, 21))
         font = QtGui.QFont()
         font.setBold(False)
         font.setWeight(50)
@@ -778,7 +770,7 @@ class Ui_Dialog(object):
         self.label_25.setFont(font)
         self.label_25.setObjectName("label_25")
         self.n2i_folder_Y = QtWidgets.QPlainTextEdit(self.groupBox_3)
-        self.n2i_folder_Y.setGeometry(QtCore.QRect(10, 100, 371, 21))
+        self.n2i_folder_Y.setGeometry(QtCore.QRect(10, 100, 481, 21))
         font = QtGui.QFont()
         font.setBold(False)
         font.setWeight(50)
@@ -793,23 +785,128 @@ class Ui_Dialog(object):
         self.label_26.setFont(font)
         self.label_26.setObjectName("label_26")
         self.n2i_folder_output = QtWidgets.QPlainTextEdit(self.groupBox_3)
-        self.n2i_folder_output.setGeometry(QtCore.QRect(10, 150, 371, 21))
+        self.n2i_folder_output.setGeometry(QtCore.QRect(10, 150, 481, 21))
         font = QtGui.QFont()
         font.setBold(False)
         font.setWeight(50)
         self.n2i_folder_output.setFont(font)
         self.n2i_folder_output.setOverwriteMode(True)
         self.n2i_folder_output.setObjectName("n2i_folder_output")
+
         self.tabWidget.addTab(self.tab_3, "")
 
         self.retranslateUi(Dialog)
         self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # original point for dynamic tqdm
+
+        setup_logging("DeepRad_Tools")
+        self.__logger = logging.getLogger("DeepRad_Tools")
+        self.__logger.setLevel(logging.DEBUG)
+        self.queue_std_out = config_dict[STDOUT_WRITE_STREAM_CONFIG][STREAM_CONFIG_KEY_QUEUE]
+        self.queue_tqdm = config_dict[TQDM_WRITE_STREAM_CONFIG][STREAM_CONFIG_KEY_QUEUE]
+
+        _translate = QtCore.QCoreApplication.translate
+
+        # for norm
+
+        self.norm_button_start = QtWidgets.QPushButton(self.tab_2)
+        self.norm_button_start.setGeometry(QtCore.QRect(690, 10, 80, 23))
+        self.norm_button_start.setObjectName("norm_button_start")
+        self.norm_button_start.setText(_translate("Dialog", "Start"))
+
+        # self.norm_logger = QtWidgets.QTextBrowser(self.tab_2)
+        self.norm_log_text = StdOutTextEdit(self.tab_2)
+        self.norm_log_text.setGeometry(QtCore.QRect(690, 40, 521, 651))
+        self.norm_log_text.setObjectName("norm_logger")
+
+        # self.norm_tqdm = QtWidgets.QTextBrowser(self.tab_2)
+        self.norm_log_tqdm = StdTQDMTextEdit(self.tab_2)
+        self.norm_log_tqdm.setGeometry(QtCore.QRect(10, 700, 1201, 21))
+        self.norm_log_tqdm.setObjectName("norm_tqdm")
+
+        self.norm_procedure = Wrapper_norm(self.tab_2)
+        # self.norm_log_text = StdOutTextEdit(self.tab_2)
+        # self.norm_log_tqdm = StdTQDMTextEdit(self.tab_2)
+        self.norm_thread_init = QThread()
+
+        self.norm_text_listener = QThread()
+        self.norm_text_receiver = config_dict[STDOUT_WRITE_STREAM_CONFIG][STREAM_CONFIG_KEY_QT_QUEUE_RECEIVER]
+        self.norm_tqdm_listener = QThread()
+        self.norm_tqdm_receiver = config_dict[TQDM_WRITE_STREAM_CONFIG][STREAM_CONFIG_KEY_QT_QUEUE_RECEIVER]
+
+        self.set_dynamic_tqdm(log_text=self.norm_log_text,
+                              log_bar=self.norm_log_tqdm,
+                              listener_text=self.norm_text_listener,
+                              receiver_text=self.norm_text_receiver,
+                              listener_tqdm=self.norm_tqdm_listener,
+                              receiver_tqdm=self.norm_tqdm_receiver)
+
+        # # for n2i
+
+        self.n2i_button_start = QtWidgets.QPushButton(self.tab_3)
+        self.n2i_button_start.setGeometry(QtCore.QRect(690, 10, 80, 23))
+        self.n2i_button_start.setObjectName("n2i_button_start")
+        self.n2i_button_start.setText(_translate("Dialog", "Start"))
+
+        self.n2i_log_text = QtWidgets.QTextBrowser(self.tab_3)
+        # self.n2i_log_text = StdOutTextEdit(self.tab_3)
+        self.n2i_log_text.setGeometry(QtCore.QRect(690, 40, 521, 551))
+        self.n2i_log_text.setObjectName("n2i_logger")
+
+        self.n2i_log_tqdm = QtWidgets.QTextBrowser(self.tab_3)
+        # self.n2i_log_tqdm = StdTQDMTextEdit(self.tab_3)
+        self.n2i_log_tqdm.setGeometry(QtCore.QRect(10, 810, 1201, 21))
+        self.n2i_log_tqdm.setObjectName("n2i_tqdm")
+
+        # self.n2i_procedure = Wrapper_norm(self.tab_2)
+        # # self.norm_log_text = StdOutTextEdit(self.tab_2)
+        # # self.norm_log_tqdm = StdTQDMTextEdit(self.tab_2)
+        # self.n2i_thread_init = QThread()
+
+        # self.n2i_text_listener = QThread()
+        # self.n2i_text_receiver = config_dict[STDOUT_WRITE_STREAM_CONFIG][STREAM_CONFIG_KEY_QT_QUEUE_RECEIVER]
+        # self.n2i_tqdm_listener = QThread()
+        # self.n2i_tqdm_receiver = config_dict[TQDM_WRITE_STREAM_CONFIG][STREAM_CONFIG_KEY_QT_QUEUE_RECEIVER]
+
+        # self.set_dynamic_tqdm(log_text=self.n2i_log_text,
+        #                       log_bar=self.n2i_log_tqdm,
+        #                       listener_text=self.n2i_text_listener,
+        #                       receiver_text=self.n2i_text_receiver,
+        #                       listener_tqdm=self.n2i_tqdm_listener,
+        #                       receiver_tqdm=self.n2i_tqdm_receiver)
+
+
+
         # link button to backend
-        self.norm_button_start.clicked.connect(self.connect_to_backend_norm)
-        self.n2i_button_start.clicked.connect(self.connect_to_backend_n2i)
-        
+        self.norm_button_start.clicked.connect(self.btn_go_clicked_norm)
+        self.n2i_button_start.clicked.connect(self.n2i_backend)
+
+
+
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
@@ -887,7 +984,7 @@ class Ui_Dialog(object):
         self.label_15.setText(_translate("Dialog", "Scale"))
         self.label_16.setText(_translate("Dialog", "Crop-above"))
         self.label_17.setText(_translate("Dialog", "Crop-below"))
-        self.norm_text_scale.setText(_translate("Dialog", "0.0"))
+        self.norm_text_scale.setText(_translate("Dialog", "1.0"))
         self.norm_text_cropa.setText(_translate("Dialog", "100.0"))
         self.norm_text_cropb.setText(_translate("Dialog", "0.0"))
         self.label_18.setText(_translate("Dialog", "User-specified shift to apply"))
@@ -896,7 +993,7 @@ class Ui_Dialog(object):
         self.label_21.setText(_translate("Dialog", "Note: does not apply to Z score normalizations."))
         self.label_22.setText(_translate("Dialog", "Crop pixel values below (less than) the specified percentile [e.g., 5]."))
         self.label_23.setText(_translate("Dialog", "Note: does not apply to Z score normalizations."))
-        self.norm_button_start.setText(_translate("Dialog", "Start"))
+
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Dialog", "Normalize"))
         self.groupBox_4.setTitle(_translate("Dialog", "Setting"))
         self.label_27.setText(_translate("Dialog", "Axes"))
@@ -962,7 +1059,6 @@ class Ui_Dialog(object):
         self.n2i_check_hflips.setText(_translate("Dialog", "Horizontal flips"))
         self.n2i_check_vflips.setText(_translate("Dialog", "Vertical flips"))
         self.n2i_check_aug.setText(_translate("Dialog", "Augmentation"))
-        self.n2i_button_start.setText(_translate("Dialog", "Start"))
         self.groupBox_3.setTitle(_translate("Dialog", "Image Folder"))
         self.n2i_folder_X.setPlainText(_translate("Dialog", "./dataX/"))
         self.label_24.setText(_translate("Dialog", "Folder X"))
@@ -972,8 +1068,63 @@ class Ui_Dialog(object):
         self.n2i_folder_output.setPlainText(_translate("Dialog", "./data_output/"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("Dialog", "nii2img"))
 
-    def connect_to_backend_norm(self):
-        deeprad_backend_norm(self)
+    def n2i_backend(self):
+        gbl_set_value("ui", self)
+        deeprad_backend_n2i()
 
-    def connect_to_backend_n2i(self):
-        deeprad_backend_n2i(self)
+    def set_dynamic_tqdm(self, log_text, log_bar,
+                         listener_text, receiver_text, listener_tqdm, receiver_tqdm):
+
+        receiver_text.queue_std_out_element_received_signal.connect(log_text.append_text)
+        receiver_text.moveToThread(listener_text)
+        listener_text.started.connect(receiver_text.run)
+        listener_text.start()
+
+        receiver_tqdm.queue_tqdm_element_received_signal.connect(log_bar.set_tqdm_text)
+        receiver_tqdm.moveToThread(listener_tqdm)
+        listener_tqdm.started.connect(receiver_tqdm.run)
+        listener_tqdm.start()
+
+    def btn_go_clicked_norm(self):
+        procedure_dr = self.norm_procedure
+        thread_dr = self.norm_thread_init
+        button_dr = self.norm_button_start
+        # prepare thread for long operation
+        procedure_dr.moveToThread(thread_dr)
+        gbl_set_value("ui", self)
+        thread_dr.started.connect(self.norm_procedure.run)
+        # start thread
+        button_dr.setEnabled(False)
+        thread_dr.start()
+        button_dr.setEnabled(True)
+
+    def btn_go_clicked_n2i(self):
+        procedure_dr = self.n2i_procedure
+        thread_dr = self.n2i_thread_init
+        button_dr = self.n2i_button_start
+        # prepare thread for long operation
+        procedure_dr.moveToThread(thread_dr)
+        gbl_set_value("ui", self)
+        thread_dr.started.connect(self.n2i_procedure.run)
+        # start thread
+        button_dr.setEnabled(False)
+        thread_dr.start()
+        button_dr.setEnabled(True)
+
+class Wrapper_norm(QObject):
+    def __init__(self, main_app):
+        super(Wrapper_norm, self).__init__()
+        self._main_app = main_app
+
+    @pyqtSlot()
+    def run(self):
+        deeprad_backend_norm()
+
+class Wrapper_n2i(QObject):
+    def __init__(self, main_app):
+        super(Wrapper_n2i, self).__init__()
+        self._main_app = main_app
+
+    @pyqtSlot()
+    def run(self):
+        deeprad_backend_n2i()
