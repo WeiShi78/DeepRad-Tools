@@ -2,13 +2,47 @@
 import deeprad_normalize as dr_norm
 import deeprad_nii2img as dr_n2i
 from types import SimpleNamespace
-from global_dict.w_global import gbl_get_value
+from PyQt5.QtCore import QThread, pyqtSignal, QObject
+from global_dict.w_global import gbl_get_value, gbl_set_value
 
 import numpy as np
+import time
+import logging
 
-def deeprad_backend_norm():
+class Worker_norm(QObject):
 
-    ui = gbl_get_value("ui")
+    madeProgress = pyqtSignal([int])
+    finished = pyqtSignal()
+
+    def __init__(self, main_app):
+        super(Worker_norm, self).__init__()
+        self.main_app = main_app
+
+    def run(self):
+        # count = 0
+        # while count < 1000:
+        #     count += 1
+        #     time.sleep(0.1)
+        #     self.madeProgress.emit(count)
+        # time.sleep(5)
+        deeprad_backend_norm(self.main_app)
+        # time.sleep(5)
+        self.finished.emit()
+
+    # def __del__(self):
+    #     self.wait()
+
+
+
+def deeprad_backend_norm(ui):
+
+    # ui = gbl_get_value("ui")
+
+    # set unique logger
+    _logger = gbl_get_value("logger")
+    if _logger is None:
+        logger = logging.getLogger()
+        gbl_set_value("logger", logger)
 
     # QtWidgets.QMessageBox.information(ui.button_start, "test", "I am in the glue!")
 
@@ -42,13 +76,22 @@ def deeprad_backend_norm():
                            scale=value_scale,
                            cropabove=value_cropa,
                            cropbelow=value_cropb,
-                           log_output=ui.norm_log_text)
+                           logger=gbl_get_value("logger"))
+    # log_output = ui.norm_log_text,
+    # bar_output = bar
     dr_norm.process_norm(args)
 
 
-def deeprad_backend_n2i():
+def deeprad_backend_n2i(ui):
 
-    ui = gbl_get_value("ui")
+    # ui = gbl_get_value("ui")
+
+    # set unique logger
+    _logger = gbl_get_value("logger")
+    if _logger is None:
+        logger = logging.getLogger()
+        gbl_set_value("logger", logger)
+
 
     value_outfolder = ui.n2i_folder_output.toPlainText()
     value_X = [ui.n2i_folder_X.toPlainText()]
@@ -152,7 +195,8 @@ def deeprad_backend_n2i():
                            hflips=value_hflips,
                            vflips=value_vflips,
                            augmode=value_augmode,
-                           log_output=ui.n2i_log_text)
+                           logger=gbl_get_value("logger"))
+    # log_output = ui.n2i_log_text
 
     # np.save('args_n2i.npy', args)
     dr_n2i.process_n2i(args)

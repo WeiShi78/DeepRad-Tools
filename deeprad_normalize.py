@@ -2,12 +2,12 @@
 DeepRad Normalize (deeprad_normalize)
 
 Calculates normalization information for folders full of NifTI images (.nii or .nii.gz files).
-Specifically, this tool add normalization information as metadata to the NifTI header so that
-other DeepRad tools can utilize these data as properly normalized inputs into deep learning
-algorithms. Running this tool is likely a pre-requisite before running other DeepRad tools.
-Note the NifTI file is modified as a result of this tool. However, the image pixel data are not
-modified and only DeepRad-specific information is placed into the header. This should have no
-effect on the use of the modified NifTI images in any other tool. 
+Specifically, this tool add normalization information as a JSON file (.deeprad) matching the 
+NiFTI file so that other DeepRad tools can utilize these data as properly normalized inputs
+into deep learning algorithms. Running this tool is most likely a pre-requisite before running
+other DeepRad tools.
+Note the NifTI file is not modified as a result of this tool. However, write permission in the
+folders where the NiFTI files are stored is required.
 """
 
 # deeprad_normalize
@@ -19,6 +19,8 @@ effect on the use of the modified NifTI images in any other tool.
 from PIL import Image
 from glob import glob
 from tqdm import tqdm
+from random import random
+from global_dict.w_global import gbl_get_value
 # from dynamic_tqdm import setup_logging, setup_streams_redirection
 
 import os
@@ -29,15 +31,16 @@ import logging
 import nibabel
 import argparse
 import itertools
+import json
 import dynamic_tqdm
 import tqdm.auto as t_AUTO
 
 import numpy as np
 
-class GuiLogger(logging.Handler):
-    def emit(self, record):
-        text = self.edit.toPlainText()+'\n'+self.format(record)
-        self.edit.setPlainText(text)  # implementation of append_line omitted
+# class GuiLogger(logging.Handler):
+#     def emit(self, record):
+#         text = self.edit.toPlainText()+'\n'+self.format(record)
+#         self.edit.setPlainText(text)  # implementation of append_line omitted
 
 def arg_parser():
     """
@@ -74,55 +77,67 @@ def main():
     args = arg_parser().parse_args()
     process_norm(args)
 
-def process_norm(args):
-    #
-    # logger = logging.getLogger()
-    # # set up logging
-    # logger.setLevel(logging.DEBUG)
-    # # create console handler and set level to info
-    # handler = logging.StreamHandler()
-    # handler.setLevel(logging.INFO)
-    # formatter = logging.Formatter('%(message)s')
-    # handler.setFormatter(formatter)
-    # logger.addHandler(handler)
-    # # create error file handler and set level to info
-    # logfile = os.path.join(args.folder[0],'deeprad.log')
-    # handler = logging.FileHandler(logfile,'w', encoding=None, delay='true')
-    # handler.setLevel(logging.INFO)
-    # formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-    # handler.setFormatter(formatter)
-    # logger.addHandler(handler)
 
-    # # output log to QT GUI
+def setup_logger(args):
+
+    logger = logging.getLogger(str(random()))
+    # set up logging
+    logger.setLevel(logging.DEBUG)
+    # create console handler and set level to info
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    # create error file handler and set level to info
+    logfile = os.path.join(args.folder[0], 'deeprad.log')
+    handler = logging.FileHandler(logfile, 'w', encoding=None, delay='true')
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
+
+def process_norm(args):
+
+
+
+    # output log to QT GUI
     # h = GuiLogger()
     # h.edit = args.log_output  # this should be done in __init__
     # logger.addHandler(h)
 
     # dynamic tqdm setting
-    dynamic_tqdm.setup_logging('DR_norm')
-    _logger = logging.getLogger('DR_norm')
-    _logger.setLevel(logging.DEBUG)
+    # dynamic_tqdm.setup_logging('DR_norm')
+    # _logger = logging.getLogger('DR_norm')
+    # _logger.setLevel(logging.DEBUG)
+
+    logger = setup_logger(args)
 
     tabs = ''
     indata = list( itertools.chain.from_iterable( [ glob_nii(f) for f in args.folder ] ) )
+    # total_norm = len(indata) - 1
     # logger.info(args.folder)
 
-    _logger.info(tabs+'deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
-    _logger.info(tabs+'{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
+    logger.info(tabs+'deeprad_normalize -- a tool to write applicaiton-specific normalization information to Nifti headers')
+    logger.info(tabs+'{} files were found in {} folder(s)'.format(len(indata),len(args.folder)))
 
     # for global normalization we need to keep track data ranges
     globaldata_norm1 = np.zeros(len(indata))
     globaldata_norm2 = np.zeros(len(indata))
 
     if args.customnorm:
-        _logger.info(tabs+'Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
+        logger.info(tabs+'Applying custom normalization (shift={}, scale={})...'.format(args.shift,args.scale))
     elif args.volumenorm:
-        _logger.info(tabs+'Computing volume-wise normalization...')
+        logger.info(tabs+'Computing volume-wise normalization...')
     elif args.globalnorm or args.globalzscore:
-        _logger.info(tabs+'Computing global normalization...')
+        logger.info(tabs+'Computing global normalization...')
         # loop through all of the files
         #for curr_file in indata:
-        for i in tqdm(range(len(indata)),desc='Determining global scaling factors'):
+        for i in tqdm(range(len(indata)), desc='Determining global scaling factors'):
+            # args.bar_output.madeProgress.emit(i / total_norm * 1000)
+            # time.sleep(2)
+
             curr_file = indata[i]
             curr_nii = nibabel.load(curr_file)
             curr_data = curr_nii.get_fdata()
@@ -137,91 +152,72 @@ def process_norm(args):
         if args.globalnorm:
             global_min = np.min(globaldata_norm1)
             global_max = np.max(globaldata_norm2)
-            _logger.info(tabs+' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
-            _logger.info(tabs+' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
+            logger.info(tabs+' Global min = {} (@ {}%-ile)'.format(global_min,args.cropbelow))
+            logger.info(tabs+' Global max = {} (@ {}%-ile)'.format(global_max,args.cropabove))
         elif args.globalzscore:
             global_mean = np.mean(globaldata_norm1)
             global_std = np.std(globaldata_norm2)
-            _logger.info(tabs+' Global mean= {}'.format(global_mean))
-            _logger.info(tabs+' Global std= {}'.format(global_std))
+            logger.info(tabs+' Global mean= {}'.format(global_mean))
+            logger.info(tabs+' Global std= {}'.format(global_std))
 
     # loop through all of the files
-    tqdm_obect = t_AUTO.tqdm(range(len(indata)), unit_scale=True, dynamic_ncols=True)
-    tqdm_obect.set_description("Writing normalization to header")
-    # for i in tqdm(range(len(indata)),desc='Writing normalization to header'):
-    for i in tqdm_obect:
+    # tqdm_obect = t_AUTO.tqdm(range(len(indata)), unit_scale=True, dynamic_ncols=True)
+    # tqdm_obect.set_description("Writing normalization to header")
+    for i in tqdm(range(len(indata)), desc='Writing normalization to header'):
+    # for i in tqdm_obect:
+    #     args.bar_output.madeProgress.emit(i / total_norm * 1000)
+    #     time.sleep(2)
         curr_file = indata[i]
-        curr_nii = nibabel.load(curr_file)
 
-        # search for a previous normalization header information and remove it
-        for curr_headerext in curr_nii.header.extensions:
-            curr_headerstring = curr_headerext.get_content().decode()
-            # check for the previous normalization string and remove it
-            if curr_headerstring.startswith('@DeepRad'):
-                curr_nii.header.extensions.remove(curr_headerext)
+        json_file = curr_file + '.deeprad'
 
-        # prepare new header string
+        deepraddata = {}
+        
+        # calculate normalization
         if args.volumenorm: # volumewise normalization
+            curr_nii = nibabel.load(curr_file)
             curr_data = curr_nii.get_fdata()
 
             curr_min = np.percentile(curr_data,args.cropbelow)
             curr_max = np.percentile(curr_data,args.cropabove)
 
-            curr_normstring = '@DeepRad/vmin/{}/vmax/{}'.format(curr_min,curr_max)
+            deepraddata['normtype'] = 'volume'
+            deepraddata['norm1'] = curr_min
+            deepraddata['norm2'] = curr_max
 
         elif args.volumezscore: # volumewise Z score
+            curr_nii = nibabel.load(curr_file)
             curr_data = curr_nii.get_fdata()
 
             curr_mean = np.mean(curr_data)
             curr_std = np.std(curr_data)
 
-            curr_normstring = '@DeepRad/vmean/{}/vstd/{}'.format(curr_mean,curr_std)
+            deepraddata['normtype'] = 'volumezscore'
+            deepraddata['norm1'] = curr_mean
+            deepraddata['norm2'] = curr_std            
 
         elif args.globalnorm: # global normalization
-            curr_normstring = '@DeepRad/gmin/{}/gmax/{}'.format(global_min,global_max)
+            deepraddata['normtype'] = 'global'
+            deepraddata['norm1'] = global_min
+            deepraddata['norm2'] = global_max   
 
         elif args.globalnorm: # global Z score
-            curr_normstring = '@DeepRad/gmean/{}/gstd/{}'.format(global_mean,global_std)
+            deepraddata['normtype'] = 'globalzscore'
+            deepraddata['norm1'] = global_mean
+            deepraddata['norm2'] = global_std  
 
         elif args.customnorm: # custom normalization
-            curr_normstring = '@DeepRad/cshift/{}/cscale/{}'.format(args.shift,args.scale)
+            deepraddata['normtype'] = 'custom'
+            deepraddata['norm1'] = args.shift
+            deepraddata['norm2'] = args.scale
 
-        # extract directory and file names from path
-        old_path = curr_nii.get_filename()
-        curr_nii_path = os.path.dirname(old_path)
-        curr_nii_name = os.path.basename(old_path)
-        temp_path = os.path.join(curr_nii_path, "temp_"+curr_nii_name)
+        # write to deeprad json file
+        with open(json_file, 'w') as outfile:  
+            json.dump(deepraddata, outfile)
 
-        # update nifti header and save
-        curr_ext = nibabel.nifti1.Nifti1Extension('afni',str.encode(curr_normstring))
-        curr_nii.header.extensions.append(curr_ext)
-        curr_nii.to_filename( temp_path )
+        logger.info('Processing {}/{}: {}'.format(i+1,len(indata),curr_file))
 
-        # move original files to "orignal" folder
-        original_folder = os.path.join(curr_nii_path, 'original')
-        if not os.path.exists(original_folder):
-            os.mkdir(original_folder)
-
-        new_path = os.path.join(original_folder, curr_nii_name)
-        os.rename(old_path, new_path)
-        os.rename(temp_path, old_path)
-
-        _logger.info('Processing: {}'.format(i))
-        # delete
-        # shutil.rmtree('/path/to/your/dir/')
-
-    _logger.info(tabs+"Normalization completed!")
-
-    # dynamic_tqdm.setup_logging('long_procedure')
-    # __logger = logging.getLogger('long_procedure')
-    # __logger.setLevel(logging.DEBUG)
-    # DR_tqdm = gbl_get_value("DR_tqdm")
-    # # tqdm_obect = t_AUTO.tqdm(range(10), unit_scale=True, dynamic_ncols=True)
-    # tqdm_obect = DR_tqdm(range(10), unit_scale=True, dynamic_ncols=True)
-    # tqdm_obect.set_description("My progress bar description")
-    # for i in tqdm_obect:
-    #     time.sleep(.1)
-    #     __logger.info('foo {}'.format(i))
+    logger.info(tabs+"Normalization completed!")
 
 
 if __name__ == "__main__":
