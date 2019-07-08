@@ -2,12 +2,12 @@
 DeepRad Normalize (deeprad_normalize)
 
 Calculates normalization information for folders full of NifTI images (.nii or .nii.gz files).
-Specifically, this tool add normalization information as metadata to the NifTI header so that
-other DeepRad tools can utilize these data as properly normalized inputs into deep learning
-algorithms. Running this tool is likely a pre-requisite before running other DeepRad tools.
-Note the NifTI file is modified as a result of this tool. However, the image pixel data are not
-modified and only DeepRad-specific information is placed into the header. This should have no
-effect on the use of the modified NifTI images in any other tool. 
+Specifically, this tool add normalization information as a JSON file (.deeprad) matching the 
+NiFTI file so that other DeepRad tools can utilize these data as properly normalized inputs
+into deep learning algorithms. Running this tool is most likely a pre-requisite before running
+other DeepRad tools.
+Note the NifTI file is not modified as a result of this tool. However, write permission in the
+folders where the NiFTI files are stored is required.
 """
 
 # deeprad_normalize
@@ -29,6 +29,7 @@ import logging
 import nibabel
 import argparse
 import itertools
+import json
 import dynamic_tqdm
 import tqdm.auto as t_AUTO
 
@@ -151,77 +152,56 @@ def process_norm(args):
     # for i in tqdm(range(len(indata)),desc='Writing normalization to header'):
     for i in tqdm_obect:
         curr_file = indata[i]
-        curr_nii = nibabel.load(curr_file)
 
-        # search for a previous normalization header information and remove it
-        for curr_headerext in curr_nii.header.extensions:
-            curr_headerstring = curr_headerext.get_content().decode()
-            # check for the previous normalization string and remove it
-            if curr_headerstring.startswith('@DeepRad'):
-                curr_nii.header.extensions.remove(curr_headerext)
+        json_file = curr_file + '.deeprad'
 
-        # prepare new header string
+        deepraddata = {}
+        
+        # calculate normalization
         if args.volumenorm: # volumewise normalization
+            curr_nii = nibabel.load(curr_file)
             curr_data = curr_nii.get_fdata()
 
             curr_min = np.percentile(curr_data,args.cropbelow)
             curr_max = np.percentile(curr_data,args.cropabove)
 
-            curr_normstring = '@DeepRad/vmin/{}/vmax/{}'.format(curr_min,curr_max)
+            deepraddata['normtype'] = 'volume'
+            deepraddata['norm1'] = curr_min
+            deepraddata['norm2'] = curr_max
 
         elif args.volumezscore: # volumewise Z score
+            curr_nii = nibabel.load(curr_file)
             curr_data = curr_nii.get_fdata()
 
             curr_mean = np.mean(curr_data)
             curr_std = np.std(curr_data)
 
-            curr_normstring = '@DeepRad/vmean/{}/vstd/{}'.format(curr_mean,curr_std)
+            deepraddata['normtype'] = 'volumezscore'
+            deepraddata['norm1'] = curr_mean
+            deepraddata['norm2'] = curr_std            
 
         elif args.globalnorm: # global normalization
-            curr_normstring = '@DeepRad/gmin/{}/gmax/{}'.format(global_min,global_max)
+            deepraddata['normtype'] = 'global'
+            deepraddata['norm1'] = global_min
+            deepraddata['norm2'] = global_max   
 
         elif args.globalnorm: # global Z score
-            curr_normstring = '@DeepRad/gmean/{}/gstd/{}'.format(global_mean,global_std)
+            deepraddata['normtype'] = 'globalzscore'
+            deepraddata['norm1'] = global_mean
+            deepraddata['norm2'] = global_std  
 
         elif args.customnorm: # custom normalization
-            curr_normstring = '@DeepRad/cshift/{}/cscale/{}'.format(args.shift,args.scale)
+            deepraddata['normtype'] = 'custom'
+            deepraddata['norm1'] = args.shift
+            deepraddata['norm2'] = args.scale
 
-        # extract directory and file names from path
-        old_path = curr_nii.get_filename()
-        curr_nii_path = os.path.dirname(old_path)
-        curr_nii_name = os.path.basename(old_path)
-        temp_path = os.path.join(curr_nii_path, "temp_"+curr_nii_name)
+        # write to deeprad json file
+        with open(json_file, 'w') as outfile:  
+            json.dump(deepraddata, outfile)
 
-        # update nifti header and save
-        curr_ext = nibabel.nifti1.Nifti1Extension('afni',str.encode(curr_normstring))
-        curr_nii.header.extensions.append(curr_ext)
-        curr_nii.to_filename( temp_path )
-
-        # move original files to "orignal" folder
-        original_folder = os.path.join(curr_nii_path, 'original')
-        if not os.path.exists(original_folder):
-            os.mkdir(original_folder)
-
-        new_path = os.path.join(original_folder, curr_nii_name)
-        os.rename(old_path, new_path)
-        os.rename(temp_path, old_path)
-
-        _logger.info('Processing: {}'.format(i))
-        # delete
-        # shutil.rmtree('/path/to/your/dir/')
+        _logger.info('Processing {}/{}: {}'.format(i,len(indata),curr_file))
 
     _logger.info(tabs+"Normalization completed!")
-
-    # dynamic_tqdm.setup_logging('long_procedure')
-    # __logger = logging.getLogger('long_procedure')
-    # __logger.setLevel(logging.DEBUG)
-    # DR_tqdm = gbl_get_value("DR_tqdm")
-    # # tqdm_obect = t_AUTO.tqdm(range(10), unit_scale=True, dynamic_ncols=True)
-    # tqdm_obect = DR_tqdm(range(10), unit_scale=True, dynamic_ncols=True)
-    # tqdm_obect.set_description("My progress bar description")
-    # for i in tqdm_obect:
-    #     time.sleep(.1)
-    #     __logger.info('foo {}'.format(i))
 
 
 if __name__ == "__main__":
