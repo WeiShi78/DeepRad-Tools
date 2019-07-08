@@ -19,11 +19,13 @@ This is incredibly useful for performing visual checks of input and output data.
 because images are written as floating-point 32-bit floating point data, there is little
 or no loss to dyanmic range as would occur with integer file formats. Finally, the tool
 utilizes a reshaping strategy to enable multiple inputs and/or 3D inputs to be provided
-by writing into 2D images. Because reshaping is a common operation, it is straightforward
-to reshape inputs and outputs to use TIFF images as an intermediate format.
+by writing into 2D images. Because reshaping data is a common operation in all deep learning
+toolkits, it is straightforward to reshape inputs and outputs to allow the use of TIFF
+images as an intermediate format for deep learning.
 
 Note that it is a pre-requisite to use DeepRad Normalize (deeprad_normalize) before using
-this tool to calculate the proper scale factors for input and output data.
+this tool to calculate the proper scale factors for input and output data. This means there
+should be .deeprad files matching your .nii/.nii.gz files in your input image data folders.
 
 Input is expected as a list of one or more folders for input (--X) and target
 output ground truth (--Y) data. Output is written into the specified folder (--outfolder)
@@ -71,6 +73,7 @@ import sys
 import time
 import copy
 import warnings
+import json
 from glob import glob
 from PIL import Image
 from scipy.ndimage import rotate
@@ -462,27 +465,24 @@ def get_nii_data(fn, logger):
     """
     nii = nibabel.load(fn)
 
-    # search for DeepRad normalization header information
-    found_norminfo = False
-    for curr_headerext in nii.header.extensions:
-        curr_headerstring = curr_headerext.get_content().decode()
-        if curr_headerstring.startswith('@DeepRad'):
-            found_norminfo = True
-            break
-
-    # read volume from file
+    # read image data from file
     data = nii.get_fdata().astype(np.float32)
 
-    # apply normalization
-    if found_norminfo:
-        #logger.debug(curr_headerstring)
-        tmp = curr_headerstring.split('/')
-        norm1 = float(tmp[2])
-        norm2 = float(tmp[4])
-        if tmp[1] == 'cshift' or tmp[1] == 'gmean' or tmp[1] == 'vmean':
-            data = (data-norm1)/norm2
-        else:
-            data = (data-norm1)/(norm2-norm1)
+    # read normalization
+    json_file = fn + '.deeprad'
+
+    if os.path.isfile(json_file):
+        with open(json_file) as infile:  
+            deepraddata = json.load(infile)
+
+            # apply normalization 
+            if deepraddata['normtype']=='custom' or deepraddata['normtype']=='globalzscore' or deepraddata['normtype']=='volumezscore':
+                data = (data-deepraddata['norm1'])/deepraddata['norm2']
+            elif deepraddata['normtype']=='global' or deepraddata['normtype']=='volume':
+                data = (data-deepraddata['norm1'])/(deepraddata['norm2']-deepraddata['norm1'])
+            else:
+                raise ValueError('Internal error. Invalid normtype in .deeprad file')
+
     else:
         warn_msg = 'No normalization info found for {}, assuming data is pre-normalized. Otherwise run deeprad_normalize'.format(fn)
         logger.warning(warn_msg)
