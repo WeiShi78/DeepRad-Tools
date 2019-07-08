@@ -71,11 +71,8 @@ Try running deeprad_nii2img --help for specific help and command line options
 # deeprad_normalize
 
 Calculates normalization information for folders full of NifTI images (.nii or .nii.gz files).
-Specifically, this tool add normalization information as metadata to the NifTI header so that
-other DeepRad tools can utilize these data as properly normalized inputs into deep learning
+Specifically, this tool add normalization information to the NifTI dataset so that other
+DeepRad tools can utilize these data as properly normalized inputs into deep learning
 algorithms. Running this tool is likely a pre-requisite before running other DeepRad tools.
-Note the NifTI file is modified as a result of this tool. However, the image pixel data are not
-modified and only DeepRad-specific information is placed into the header. This should have no
-effect on the use of the modified NifTI images in any other tool. 
 
 Try running deeprad_normalize --help for specific help and command line options
