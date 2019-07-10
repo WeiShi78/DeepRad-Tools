@@ -142,6 +142,7 @@ def glob_nii(folder):
 def main():
     # parse args
     args = arg_parser().parse_args()
+    args.log_output = None
     process_n2i(args)
 
 def process_n2i(args):
@@ -171,9 +172,10 @@ def process_n2i(args):
     logger.addHandler(handler)
 
     # output log to QT GUI
-    h = GuiLogger()
-    h.edit = args.log_output  # this should be done in __init__
-    logger.addHandler(h)
+    if args.log_output is not None:
+        h = GuiLogger()
+        h.edit = args.log_output  # this should be done in __init__
+        logger.addHandler(h)
     tabs = '---'
 
     logger.info(tabs+'Started {}'.format(sys.argv[0]))
@@ -254,7 +256,15 @@ def process_n2i(args):
             curr_Y_files = [f[file_order[i]] for f in Y_files]
             X_vol = np.stack([get_nii_data(f, logger) for f in curr_X_files])
             Y_vol = np.stack([get_nii_data(f, logger) for f in curr_Y_files])
-
+            
+            if X_vol.ndim is 5: # handle 4D inputs
+                X_vol = np.reshape( X_vol, (-1,X_vol.shape[2],X_vol.shape[3],X_vol.shape[4]) )
+            if Y_vol.ndim is 5: # handle 4D inputs
+                Y_vol = np.reshape( Y_vol, (-1,Y_vol.shape[2],Y_vol.shape[3],Y_vol.shape[4]) )
+                
+            print( X_vol.shape )
+            print( Y_vol.shape )
+            
             # transpose so that the sampled slice is the last dimension
             if axis == 0:
                 X_vol = np.transpose( X_vol, (0,2,3,1))
@@ -270,7 +280,7 @@ def process_n2i(args):
                 else:
                     output_shape = X_vol.shape[1:3]
                 check_first_file = False
-             
+            
             logger.info(tabs+'X[{}] => Y[{}]'.format(' '.join(curr_X_files),' '.join(curr_Y_files)))
 
             # check to make sure the data is matching in size, otherwise skip this data
@@ -467,6 +477,9 @@ def get_nii_data(fn, logger):
 
     # read image data from file
     data = nii.get_fdata().astype(np.float32)
+    
+    if data.ndim is 4: # handle 4D input files
+        data = np.transpose( data, (3,0,1,2))
 
     # read normalization
     json_file = fn + '.deeprad'
